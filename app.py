@@ -1,30 +1,32 @@
 import streamlit as st
 import requests
 
-# ---------- 你的提示词（已去敏感词）----------
-SYSTEM_PROMPT = """你是“校园法治青年助手”，一位专注于普法与风险防范知识科普的智能体。你的任务是帮助团员和同学增强法治观念、提升日常生活中的风险识别与自我保护能力。
+# ---------- 团员教育版提示词 ----------
+SYSTEM_PROMPT = """你是团支部的“国安教育辅导员”，名字叫“小安”。你的工作是：用同学们爱听的方式，讲清楚国家安全那些事，顺便帮团支书省点力气。
 
-# 核心能力
-1. 法律法规查询：回答《反间谍法》《数据安全法》《保守国家秘密法》等法律相关的常见问题。
-2. 校园场景提示：结合学术交流、网络社交、求职兼职、出国（境）交流等场景，提供法律与安全提示。
-3. 活动素材生成：协助生成主题班会、团日活动的策划大纲、宣传文案、知识竞赛题目框架。
-4. 情景推演参考：提供“高薪兼职索要内部资料”等互动情景。
+# 你擅长做的事
+- **解答疑惑**：《国家安全法》第几条？发军舰照违法吗？境外组织的问卷能填吗？—— 随时问，随时答。
+- **风险识别**：帮同学判断“这兼职是不是有问题”“这人是不是在套我话”。
+- **团日助攻**：要开主题团会？给我主题，我出策划、出PPT大纲、出主持词、出10道抢答题。
+- **情景模拟**：比如“假如有人加你微信，说要买你课题里的数据……” 我可以扮演对方，和你过一遍。
 
-# 回复规范
-- 语气亲切，像学长/学姐。
-- 优先调用知识库内容（若有）。
-- 遇到疑似泄密、非法收集信息等行为，提醒用户注意法律风险，并可建议通过12339反映。
+# 说话风格
+- 就像你们班那个懂法又爱帮忙的团支书。
+- 可以带点感叹号、可以叫“同学”“伙伴”。
+- 如果需要严肃提醒，就认真说；平时可以轻松点。
 
-# 行为红线
-- 不提供具体法律行动建议。
-- 不替代官方机构判断。
-- 对复杂问题回复：“建议您向学校保卫处或拨打12339咨询。”
-"""
+# 重要原则
+- 不编法律条文。
+- 不确定的就建议去查官方渠道或打12339。
+- 对明显违法的问题，不回避，正面提示风险。
 
-# ---------- 调用 API（使用硅基流动的免费模型）----------
+# 开场白
+嗨～我是咱团支部的小安。国家安全听起来很大，其实就跟我们刷手机、找实习、写论文这些事儿有关。有啥拿不准的，找我聊聊呗。对了，需要帮团日活动出材料的，直接甩主题给我。"""
+
+# ---------- 调用硅基流动 API ----------
 def chat_with_ai(user_message):
     url = "https://api.siliconflow.cn/v1/chat/completions"
-    api_key = "sk-mstmqpwsczmdiaoctvmfoldoatgopxuddofrewclqyqlclwp"  # 去 https://siliconflow.cn 注册免费拿
+    api_key = "sk-mstmqpwsczmdiaoctvmfoldoatgopxuddofrewclqyqlclwp"  # 替换成你自己的
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
@@ -38,16 +40,32 @@ def chat_with_ai(user_message):
         "stream": False
     }
     response = requests.post(url, json=data, headers=headers)
-    return response.json()["choices"][0]["message"]["content"]
+    result = response.json()
+    return result["choices"][0]["message"]["content"]
 
-# ---------- 页面界面 ----------
-st.set_page_config(page_title="校园法治青年助手", page_icon="⚖️")
-st.title("⚖️ 校园法治青年助手")
-st.caption("我可以帮你了解法律常识、防范校园风险、生成团日活动素材")
+# ---------- Streamlit 页面 ----------
+st.set_page_config(page_title="团支部·国安小助手", page_icon="🇨🇳")
+
+# 侧边栏支部信息
+st.sidebar.markdown("🇨🇳 **我们是 嘉兴大学 材料与纺织工程学院 非织造251团支部**")
+st.sidebar.markdown("---")
+st.sidebar.markdown("**小安的服务范围：**")
+st.sidebar.markdown("- 法律法规常识")
+st.sidebar.markdown("- 校园风险识别")
+st.sidebar.markdown("- 团日活动素材")
+st.sidebar.markdown("- 情景互动模拟")
+st.sidebar.markdown("---")
+st.sidebar.caption("遇到可疑情况，请拨打 12339")
+
+st.title("🇨🇳 团支部·国安小助手")
+st.caption("我是小安，你的团员教育好伙伴。有啥拿不准的，都可以问我～")
 
 # 初始化聊天记录
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    # 开场白
+    st.session_state.messages = [
+        {"role": "assistant", "content": "嗨～我是咱团支部的小安。国家安全听起来很大，其实就跟我们刷手机、找实习、写论文这些事儿有关。有啥拿不准的，找我聊聊呗。对了，需要帮团日活动出材料的，直接甩主题给我。"}
+    ]
 
 # 显示历史消息
 for msg in st.session_state.messages:
@@ -62,7 +80,7 @@ if prompt := st.chat_input("输入你的问题..."):
 
     # 获取回复
     with st.chat_message("assistant"):
-        with st.spinner("思考中..."):
+        with st.spinner("小安思考中..."):
             reply = chat_with_ai(prompt)
             st.markdown(reply)
     st.session_state.messages.append({"role": "assistant", "content": reply})
